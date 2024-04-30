@@ -1,0 +1,6 @@
+pyise-ers==0.2.0.1
+pynetbox==6.6.2
+deepdiff==5.8.1
+PyYAML==6.0
+rich==12.5.1
+urllib3==1.26.6

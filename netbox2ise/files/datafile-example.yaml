@@ -1,0 +1,46 @@
+# Example datafile for syncing NetBox and Cisco ISE 
+defaults: 
+  netbox_server: 
+    url: http://netbox.exmaple.local
+    # If no token is provided or if it is false, an ENV of NETBOX_TOKEN will be looked for
+    token: nadkafniadkafnakdandakdnadkadnadks  
+  ise_server: 
+    address: ise.example.local  # or an IP address
+    # If no username is provided or if it is false, an ENV of ISE_USER will be looked for
+    username: false
+    # If no password is provided or if it is false, an ENV of ISE_PASS will be looked for
+    password: false
+  # The underlying functions within netbox2ise have debug outputs that display data. Set to True to display these
+  debug: false
+
+# A list of sync jobs with relevant data for syncronizing 
+jobs:
+- name: primary 
+  # The fields provided here will determine what devices and vms from NetBox are discovered
+  netbox_query: 
+    # Site Names
+    sites: 
+    - Site01
+    # NetBox Tenants to filter on 
+    tenants: 
+    - admin
+    - mgmt 
+    # Device and VM Status to filter on
+    status: 
+    - active 
+    - staged
+    # Model Names for each Device Type to find 
+    device_types: 
+    - Nexus 9300v
+    - ASAv
+    # Device Role Names for each Device or VM Role to find 
+    device_roles: 
+    - Switch
+    - Firewall
+  # Configuration settings to apply to returned devices in this job
+  #   Not providing configuration for TACACS or RADIUS will result in that protocol being left unconfigured
+  ise_config: 
+    tacacs: 
+      secret: MySecret99
+    radius: 
+      secret: MySecret100
