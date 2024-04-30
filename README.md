@@ -2,6 +2,13 @@
 
 This project aims to use NetBox as a Source of Truth for ISE Network Devices and Network Device Group Membership.
 
+> Note: This project was originally written in April 2021 by lab systems team within Learning and Certifictions at Cisco to support the syncing of data between our production source of truth and RBAC systems.  
+> Development completed by 
+>  - Hank Preston
+>  - Stuart Weickgenant
+>
+> It is being shared publicly as an example of how such a solution could be approached.  While the utility was written to be widely used and support other installations of NetBox and ISE it is recommended to fully review and test before using in your own environment.  
+
 ## Table of Contents
 
 * [Mapping NetBox Attributes to ISE](#mapping-netbox-attributes-to-ise)
