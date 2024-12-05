@@ -7,7 +7,13 @@ This project aims to use NetBox as a Source of Truth for ISE Network Devices and
 >  - Hank Preston
 >  - Stuart Weickgenant
 >
-> It is being shared publicly as an example of how such a solution could be approached.  While the utility was written to be widely used and support other installations of NetBox and ISE it is recommended to fully review and test before using in your own environment.  
+> It is being shared publicly as an example of how such a solution could be approached.  While the utility was written to be widely used and support other installations of NetBox and ISE it is recommended to fully review and test before using in your own environment.
+>
+
+> Note: This project was developed and tested with the following software versions. It might work with older/newer versions, but as APIs and features changes issues might be encountered.
+>
+> * NetBox: v3.3
+> * Cisco ISE: v3.1
 
 ## Table of Contents
 
