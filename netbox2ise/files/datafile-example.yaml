@@ -10,6 +10,11 @@ defaults:
     username: false
     # If no password is provided or if it is false, an ENV of ISE_PASS will be looked for
     password: false
+    # ISE version you are using. If no version is provided in the datafile,
+    # an ENV of ISE_VERSION will be looked for.
+    # See README for possible version options to use.
+    # Defaults to 'legacy' if not specified
+    version: legacy
   # The underlying functions within netbox2ise have debug outputs that display data. Set to True to display these
   debug: false
 

@@ -1,15 +1,13 @@
 from os import getenv
 import yaml
 import json
+import importlib
 
 from rich.console import Console
 from rich.table import Table
 from rich import print as rprint
 
 from netbox2ise.utils.netbox import verify_netbox, lookup_nb_devices
-from netbox2ise.utils.ise import verify_ise, lookup_ise_devices, lookup_groups
-
-# from netbox2ise.utils.ise import lookup_groups, sync_groups, lookup_ise_devices
 
 from netbox2ise.utils.conversion import (
     set_of_ise_groups,
@@ -17,14 +15,36 @@ from netbox2ise.utils.conversion import (
     diff_ise_devices,
 )
 
-# from netbox2ise.utils.conversion import ise_device_from_netbox, set_of_ise_groups, diff_ise_groups, diff_ise_devices
-
 
 from netbox2ise.utils.conversion import ise_device_from_netbox
 
+# Supported ciscoise-sdk API versions
+ciscoise_sdk_supported_api_versions = ["3.1.0", "3.1_Patch_1", "3.2_beta", "3.3_patch_1"]
 
 console = Console()
 
+def get_module_by_version(version):
+    """
+    Dynamically load the correct ISE library based on the version provided
+    If the version is not supported, raise a ValueError.
+    Choices:
+        - "legacy": Use the original ISE library (pyise-ers)
+        - See `ciscoise_sdk_supported_api_versions` static variable above for supported versions
+          that use the new ISE library (ciscosdk-ise)
+    :param version: The version of ISE to use
+    :type version: str
+    :return: The ISE library module
+    :rtype: module
+    """
+    if version == "legacy":
+        return importlib.import_module("netbox2ise.utils.ise")
+    elif version in ciscoise_sdk_supported_api_versions:
+        return importlib.import_module("netbox2ise.utils.ciscosdk_ise")
+    else:
+        raise ValueError(
+            f"Invalid version: {version}. Supported versions are: "
+            f"legacy, {', '.join(ciscoise_sdk_supported_api_versions)}"
+        )
 
 def test_datafile(data_file):
     """
@@ -77,17 +97,42 @@ def test_datafile(data_file):
                 if ise_server.get("password")
                 else getenv("ISE_PASS")
             )
+            ise_server["version"] = (
+                ise_server["version"]
+                if ise_server.get("version")
+                else getenv("ISE_VERSION")
+            )
 
-            # Attempt to conenct to ise server
-            ise_test = verify_ise(ise_server)
-            if ise_test["status"]:
+            if not ise_server["version"]:
+                ise_server["version"] = "legacy"
                 rprint(
-                    f"[blue]ISE Server {ise_server['address']} successfully connected to."
+                    "[yellow]ISE version not specified in data-file or environment. Defaulting to 'legacy'."
+                )
+
+            # Check if the version string provided in the datafile is valid
+            if ise_server["version"] not in ["legacy"] + ciscoise_sdk_supported_api_versions:
+                errors.append(
+                    f"Invalid ISE version {ise_server['version']}. "
+                    f"Must be one of: legacy, {', '.join(ciscoise_sdk_supported_api_versions)}. Exiting script"
                 )
             else:
-                rprint(
-                    f"[red]Problem connecting to ISE Server {ise_server['address']}."
-                )
+                # dynamically load the correct ise library
+                ise = get_module_by_version(ise_server["version"])
+                if not ise:
+                    errors.append(
+                        f"Unable to load ISE library for version {ise_server['version']}. "
+                    )
+                else:
+                    # Attempt to conenct to ise server
+                    ise_test = ise.verify_ise(ise_server)
+                    if ise_test["status"]:
+                        rprint(
+                            f"[blue]ISE Server {ise_server['address']} successfully connected to."
+                        )
+                    else:
+                        rprint(
+                            f"[red]Problem connecting to ISE Server {ise_server['address']}."
+                        )
         else:
             errors.append("ise_server data is missing.")
     else:
@@ -168,11 +213,13 @@ def lookup_current_ise_config(ise_server, debug):
     :param ise_server:
     :return (current_devices, current_groups)
     """
-
-    current_devices = lookup_ise_devices(ise_server, debug=debug)
+    # Import the correct ISE module based on the version
+    ise = get_module_by_version(ise_server["version"])
+    
+    current_devices = ise.lookup_ise_devices(ise_server, debug=debug)
     if debug:
         console.log(f"current_devices: {current_devices}")
-    current_groups = lookup_groups(ise_server, debug=debug)
+    current_groups = ise.lookup_groups(ise_server, debug=debug)
     if debug:
         console.log(f"current_groups: {current_groups}")
 
@@ -411,8 +458,15 @@ def print_devices_sync(devices_sync):
                 result = updates["response"]
             elif status == "updated":
                 results_list = []
-                for field in updates["response"]["updatedField"]:
-                    # Bug in ERS API response on 2.7 for updated description field.
+                # ciscoisesdk uses 'UpdatedFieldsList' for dictionary key for updates
+                if 'UpdatedFieldsList' in updates:
+                    update = updates['UpdatedFieldsList']
+                # pyise-ers uses 'response' for dictionary key for updates
+                else:
+                    update = updates['response']
+
+                for field in update["updatedField"]:
+                    # Bug in ISE API response for updated description field.
                     #  Instead of a simple string with new description, a JSON string provided with extra details
                     #       {
                     #           "field": "Description",
@@ -420,8 +474,6 @@ def print_devices_sync(devices_sync):
                     #           "newValue": "{\"description\":\"NEW\",\"secondRadiusSharedSecret\":\"\",\"enableMultiSecret\":\"false\"}"
                     #       },
                     # To work around this, if the field is "Description", will need to be read in as json and worked with
-                    # NOTE: This could cause problems with newer versions of ISE without this bug
-                    # TODO: Test with different versions of ISE
                     if field["field"] == "Description":
                         field["oldValue"] = json.loads(field["oldValue"])["description"]
                         field["newValue"] = json.loads(field["newValue"])["description"]

@@ -6,6 +6,7 @@ ready for insertion/checks with Cisco ISE.
 import pynetbox
 from deepdiff import DeepDiff
 import re
+from ciscoisesdk.models.mydict import MyDict
 
 
 def ise_name_cleanup(name):
@@ -129,9 +130,18 @@ def ise_groups_from_netbox(device, debug=False):
     # Devices: Device Role
     role_group = "Device Role#Device Role{role}"
     if isinstance(device, pynetbox.models.dcim.Devices):
-        role_group = role_group.format(
-            role=f"#{ise_name_cleanup(device.device_role.name)}"
-        )
+        # From Version: 4.0 breaking change log:
+        # "The obsolete device_role field has been removed from
+        # the REST API serializer for devices. (Use role instead.)"
+        if hasattr(device, "role"):
+            role_group = role_group.format(
+                role=f"#{ise_name_cleanup(device.role.name)}"
+            )
+        # Backwards compatibility for Netbox versions earlier than 4.0
+        else:
+            role_group = role_group.format(
+                role=f"#{ise_name_cleanup(device.device_role.name)}"
+            )
     # VMs: VM Role
     elif (
         isinstance(device, pynetbox.models.virtualization.VirtualMachines)
@@ -319,6 +329,10 @@ def diff_ise_devices(desired_devices, current_devices, debug=False):
                     "root['tacacsSettings']['previousSharedSecret']",
                     "root['tacacsSettings']['previousSharedSecretExpiry']",
                 ],
+                # Needed for ciscoisesdk device objects which are returned as MyDict
+                # object types, whereas desired device configs are standard
+                # Python dictionaries
+                ignore_type_in_groups=[(MyDict, dict)],
             )
             current_groups = set(device["current"]["NetworkDeviceGroupList"])
         else:

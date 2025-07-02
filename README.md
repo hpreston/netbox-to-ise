@@ -12,14 +12,15 @@ This project aims to use NetBox as a Source of Truth for ISE Network Devices and
 
 > Note: This project was developed and tested with the following software versions. It might work with older/newer versions, but as APIs and features changes issues might be encountered.
 >
-> * NetBox: v3.3
-> * Cisco ISE: v3.1
+> * NetBox: v4.3 (also has been tested with v3.3)
+> * Cisco ISE: v3.1 Patch 7, v3.3
 
 ## Table of Contents
 
 * [Mapping NetBox Attributes to ISE](#mapping-netbox-attributes-to-ise)
 * [Installing netbox2ise](#installing-netbox2ise)
 * [TL:DR - Getting Started Quickly](#tldr-getting-started-quickly)
+* [netbox2ise API Version Options](#netbox2ise-api-version-options)
 
 ### Other Documents 
 
@@ -57,7 +58,10 @@ In its current state, `netbox2ise` requires the following steps to install and u
     pip install -r requirements.txt
     ```
 
-    > Note: `netbox2ise` uses a public Python ISE library (https://github.com/falkowich/pyise-ers). The `requirements.txt` file reflects this source for the library. 
+    > Note: `netbox2ise` uses one of 2 public Python ISE library depending on the version of ISE you are using with the tool:
+      * https://github.com/falkowich/pyise-ers for versions of ISE earlier than 3.1
+      * https://github.com/CiscoISE/ciscoisesdk for ISE version 3.1 and later
+      * The `requirements.txt` file installs both of these libraries and dynamically determines at runtime which library to source, depending on the version string in the datafile or environment variable
 
 1. Install the `netbox2ise` tool. 
 
@@ -100,6 +104,8 @@ defaults:
     username: false
     # If no password is provided or if it is false, an ENV of ISE_PASS will be looked for
     password: false
+    # ISE version you are using. If no version is provided in the datafile, an ENV of ISE_VERSION will be looked for. See README for possible version options to use. Defaults to 'legacy' if not specified
+    version: legacy
   # The underlying functions within netbox2ise have debug outputs that display data. Set to True to display these
   debug: false
 
@@ -150,6 +156,7 @@ defaults:
     address: 192.168.10.102
     username: false
     password: false
+    version: 3.1.0
 
 jobs:
 - name: demo 
@@ -169,10 +176,17 @@ Notice how the token, username, and password fields for NetBox and ISE are set t
 
 ```bash
 export ISE_USER=ersadmin
-export ISE_PASS=SuperSecret 
+export ISE_PASS=SuperSecret
 export NETBOX_TOKEN=nakasdinad9a7sinadkad9ndaks
 ```
 
+For the ISE version to use, you should set that within the datafile, otherwise it can be specified as an environment variable. This
+[section](#netbox2ise-api-version-options) has a list of the possible options. It will default to `legacy` if the version is not specified
+in the datafile or as an environmental variable
+
+```bash
+export ISE_VERSION=3.1.0
+```
 To do a final check that your datafile setup is working, run the `check-datafile` command. 
 
 ```shell
@@ -289,5 +303,28 @@ In order for network devices to be setup in Cisco ISE correctly based on NetBox 
 
 * The device or vm ***MUST*** have a primary ip address identified.  This IP address will be configured as the IP address for the device within Cisco ISE
 * All Virtual Machines are configured with a Device Type in ISE of `Device Types#All VMs#General VM` as NetBox doesn't have a `Device Type` attribute for VMs
-* VM Roles within NetBox should be assigned to VMs to provide an attribute that can be used in Cisco ISE as a `Network Device Group` for uniquely identifying groups of VMs 
+* VM Roles within NetBox should be assigned to VMs to provide an attribute that can be used in Cisco ISE as a `Network Device Group` for uniquely identifying groups of VMs
 
+### netbox2ise API Version Options
+
+netbox2ise has been designed to be compatible with ISE 2.X as well as versions 3.0 up to 3.3
+
+For ISE versions earlier than 3.1, the following public Python ISE library (https://github.com/falkowich/pyise-ers) is used. The maintainer of this library has archived the project.
+
+For ISE 3.1 and later the ciscoisesdk library (https://github.com/CiscoISE/ciscoisesdk) is used instead which is being actively maintained
+
+See the [Quickstart guide](https://ciscoisesdk.readthedocs.io/en/latest/) for more details on the library
+
+The version of ISE you are using with this tool, determines the specific ISE library that will be used. The following table shows the possible version string options for the tool:
+
+| Cisco ISE version | netbox2ise Version String |
+| ------ | ------ |
+| Earlier than ISE 3.1 | legacy (**default option**) | 
+| ISE 3.1 (No Patches) | 3.1.0 |
+| 3.1 Patch 1 (and later patches)  | 3.1_Patch_1 |
+| 3.2  | 3.2_beta |
+| 3.3  | 3.3_patch_1 |
+
+As mentioned above, if a version is not specified in the datafile or in the
+`ISE_VERSION` environment variable, netbox2ise will default to the `legacy`
+version, which uses the pyise-ers module.
