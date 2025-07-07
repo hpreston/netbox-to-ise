@@ -137,7 +137,6 @@ def sync_groups(
         for group in group_diff["extra"]:
             if debug:
                 print(f"Group {group} is 'extra'. It will be removed.")
-            # results["deleted"][group] = ise.delete_device_group(name=group)
 
     else:
         if debug:

@@ -152,28 +152,3 @@ def lookup_nb_devices(
             print(f"Lookup failed: {e}")
         return {"status": False, "result": e}
 
-
-if __name__ == "__main__":
-    from os import environ
-
-    netbox_server = {
-        "url": environ.get("NETBOX_URL"),
-        "token": environ.get("NETBOX_TOKEN"),
-    }
-
-    devices_a = lookup_devices(netbox_server, debug=True, sites=["TST01"])
-    device_b = lookup_devices(
-        netbox_server,
-        debug=True,
-        device_types=["Nexus 9300v", "Nexus 9500v", "ASAv-physical"],
-    )
-    device_c = lookup_devices(
-        netbox_server,
-        debug=True,
-        device_roles=[
-            "Virtual/Physical Firewall",
-            "Virtual/Physical Switch",
-            "Virtual/Physical Router",
-        ],
-    )
-    device_d = lookup_devices(netbox_server, debug=True, tenants=["tst01-z0-admin"])

@@ -24,6 +24,7 @@ from netbox2ise.utils.cli_utils import (
     print_devices_diff,
     print_group_sync,
     print_devices_sync,
+    get_module_by_version
 )
 
 # from netbox2ise.utils.netbox import lookup_nb_devices
@@ -33,10 +34,6 @@ from netbox2ise.utils.conversion import (
     diff_ise_groups,
     diff_ise_devices,
 )
-
-from netbox2ise.utils.ise import sync_groups, sync_devices
-
-# from netbox2ise.utils.ise import lookup_groups, sync_groups, lookup_ise_devices
 
 console = Console()
 
@@ -77,6 +74,12 @@ def sync(data_file, remove_extra, debug):
         rprint("[bold red]Error verifying data-file. Stopping process.")
         return
 
+    # Import the correct ISE module based on the version
+    ise = get_module_by_version(datafile["defaults"]["ise_server"]["version"])
+    if not ise:
+        rprint("[bold red]Unable to load ISE library. Stopping process.")
+        return
+
     console.rule(f"[bold black] Calculating Diffs", align="left")
 
     # Get Current ISE Devices and Groups
@@ -112,7 +115,7 @@ def sync(data_file, remove_extra, debug):
     )
 
     console.rule(f"[bold black] Syncing Network Device Groups", align="left")
-    groups_sync = sync_groups(
+    groups_sync = ise.sync_groups(
         datafile["defaults"]["ise_server"],
         current_groups,
         groups_diff,
@@ -133,7 +136,7 @@ def sync(data_file, remove_extra, debug):
         rprint("   [grey]No changes to Network Device Groups made.")
 
     console.rule(f"[bold black] Syncing Network Devices", align="left")
-    devices_sync = sync_devices(
+    devices_sync = ise.sync_devices(
         datafile["defaults"]["ise_server"], devices_diff, debug=debug
     )
 
@@ -254,8 +257,9 @@ def check_datafile(data_file):
     """
 
     verify_datafile = test_datafile(data_file)
-
-    # TODO: Do something with return code to exit code to indicate success/failure
+    if not verify_datafile:
+        rprint("[bold red]Error verifying data-file. Stopping process.")
+        return
 
 
 cli.add_command(sync)
